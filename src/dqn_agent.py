@@ -84,10 +84,7 @@ class Agent:
         self.random = random
         self.two_neuron = two_neuron
 
-        # Initialize Replay Memory
         self.memory = ReplayBuffer(self.memory_size, self.batch_size, seed)
-
-        # Initialize time step
         self.t_step = 0
         self.t_step_total = 0
 
@@ -107,36 +104,24 @@ class Agent:
 
     def step(self, state, action, reward, next_state, done):
         self.memory.add(state, action, reward, next_state, done)
-
-        # Learn every UPDATE_EVERY time steps.
         self.t_step = (self.t_step + 1) % self.update_every
         if self.t_step == 0:
-            # If enough samples are available in memory, get random subset and learn
             if len(self.memory) > self.batch_size:
                 experiences = self.memory.sample()
                 self.optimize_model(experiences)
 
     def optimize_model(self, experiences):
         states, actions, rewards, next_states, dones = experiences
-
-        # Get max predicted Q values (for next states) from target model
         if self.spiking:
             Q_targets_next = self.target_net.forward(next_states)[0].detach().max(1)[0].unsqueeze(1)
         else:
             Q_targets_next = self.target_net(next_states).detach().max(1)[0].unsqueeze(1)
-
-        # Compute Q targets for current states
         Q_targets = rewards + (self.gamma * Q_targets_next*(1 - dones))
-
-        # Get expected Q values from local model
         if self.spiking:
             Q_expected = self.policy_net.forward(states)[0].gather(1, actions)
         else:
             Q_expected = self.policy_net.forward(states).gather(1, actions)
-
-        # Compute loss
         loss = F.mse_loss(Q_expected, Q_targets)
-        # Minimize the loss
         self.optimizer.zero_grad()
         loss.backward(retain_graph=True)
 
@@ -211,9 +196,6 @@ class Agent:
 
 
 def evaluate_agent(policy_net, env, num_episodes, max_steps, gym_seeds, epsilon=0):
-    """
-
-    """
     rewards = []
 
     for i_episode in range(num_episodes):
